@@ -149,7 +149,15 @@ class MapExtentPicker(QObject):
         raise NotImplementedError
 
     def _transform_to_wgs84(self, rect):
-        raise NotImplementedError
+        from qgis.core import (
+            QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProject,
+        )
+        canvas_crs = self._canvas.mapSettings().destinationCrs()
+        wgs84 = QgsCoordinateReferenceSystem("EPSG:4326")
+        if not canvas_crs.isValid() or canvas_crs == wgs84:
+            return rect
+        xform = QgsCoordinateTransform(canvas_crs, wgs84, QgsProject.instance())
+        return xform.transformBoundingBox(rect)
 
 
 class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
