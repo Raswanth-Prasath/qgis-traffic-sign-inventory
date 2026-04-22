@@ -48,6 +48,10 @@ class MapToolLifecycleTest(unittest.TestCase):
         CANVAS.setMapTool(self.pan_tool)
 
     def tearDown(self):
+        try:
+            self.picker.deactivate()
+        except Exception:
+            pass
         self.picker = None
         self.pan_tool = None
 
@@ -59,6 +63,16 @@ class MapToolLifecycleTest(unittest.TestCase):
         self.picker.activate()
         self.picker.deactivate()
         self.assertIs(CANVAS.mapTool(), self.pan_tool)
+
+    def test_activate_twice_preserves_original_previous_tool(self):
+        self.picker.activate()
+        first_extent_tool = self.picker._map_tool
+        self.picker.activate()
+        # _previous_tool should still point at the pre-picker pan tool,
+        # not the first QgsMapToolExtent that activate() created.
+        self.assertIs(self.picker._previous_tool, self.pan_tool)
+        # And the first extent tool must be disposed (not the current _map_tool).
+        self.assertIsNot(self.picker._map_tool, first_extent_tool)
 
 
 if __name__ == "__main__":

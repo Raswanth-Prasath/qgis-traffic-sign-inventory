@@ -135,7 +135,17 @@ class MapExtentPicker(QObject):
 
     def activate(self):
         from qgis.gui import QgsMapToolExtent
-        self._previous_tool = self._canvas.mapTool()
+        if self._map_tool is not None:
+            # Already active — tear down the old tool, but DO NOT overwrite
+            # _previous_tool, since that's the true pre-activation tool.
+            try:
+                self._map_tool.extentChanged.disconnect(self._on_extent_changed)
+            except TypeError:
+                pass
+            self._map_tool = None
+        else:
+            # First activation: save the pre-picker tool for restoration.
+            self._previous_tool = self._canvas.mapTool()
         self._map_tool = QgsMapToolExtent(self._canvas)
         self._map_tool.extentChanged.connect(self._on_extent_changed)
         self._canvas.setMapTool(self._map_tool)
@@ -161,6 +171,7 @@ class MapExtentPicker(QObject):
                 pass
             if self._previous_tool is not None:
                 self._canvas.setMapTool(self._previous_tool)
+                self._previous_tool = None
             self._map_tool = None
         try:
             self.iface.messageBar().clearWidgets()
