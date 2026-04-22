@@ -10,7 +10,7 @@ from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import (
     QDialog, QFileDialog, QMessageBox, QPushButton
 )
-from qgis.PyQt.QtCore import Qt, QThread, pyqtSignal
+from qgis.PyQt.QtCore import Qt, QThread, pyqtSignal, QObject
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'traffic_sign_inventory_dialog_base.ui'))
@@ -113,6 +113,43 @@ class FetchWorker(QThread):
                 if self.client and getattr(self.client, 'token', None):
                     msg = msg.replace(self.client.token, "<redacted>")
                 self.error.emit(msg)
+
+
+class MapExtentPicker(QObject):
+    """Wraps QgsMapToolExtent with a persistent rubber band and CRS transform.
+
+    Emits extent_picked(QgsRectangle) in EPSG:4326 when the user completes a
+    draw, or draw_cancelled() when the user presses ESC.
+    """
+
+    extent_picked = pyqtSignal(object)
+    draw_cancelled = pyqtSignal()
+
+    def __init__(self, iface, parent=None):
+        super().__init__(parent)
+        self.iface = iface
+        self._canvas = iface.mapCanvas()
+        self._previous_tool = None
+        self._map_tool = None
+        self._persistent_band = None
+
+    def activate(self):
+        raise NotImplementedError
+
+    def cancel(self):
+        raise NotImplementedError
+
+    def deactivate(self):
+        raise NotImplementedError
+
+    def clear_rubber_band(self):
+        raise NotImplementedError
+
+    def _on_extent_changed(self, rect):
+        raise NotImplementedError
+
+    def _transform_to_wgs84(self, rect):
+        raise NotImplementedError
 
 
 class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
