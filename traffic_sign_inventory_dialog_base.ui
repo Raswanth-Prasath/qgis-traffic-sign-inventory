@@ -35,7 +35,7 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="1" colspan="3">
+      <item row="0" column="1" colspan="2">
        <widget class="QComboBox" name="bbox_method">
         <item>
          <property name="text">
@@ -49,9 +49,22 @@
         </item>
         <item>
          <property name="text">
-          <string>Draw on map (coming soon)</string>
+          <string>Draw on map</string>
          </property>
         </item>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QPushButton" name="redraw_btn">
+        <property name="text">
+         <string>Re-draw</string>
+        </property>
+        <property name="visible">
+         <bool>false</bool>
+        </property>
+        <property name="toolTip">
+         <string>Draw a new rectangle on the map</string>
+        </property>
        </widget>
       </item>
       <item row="1" column="0">
