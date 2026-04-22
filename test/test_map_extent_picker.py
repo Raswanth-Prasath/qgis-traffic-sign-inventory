@@ -30,9 +30,9 @@ class CrsTransformTest(unittest.TestCase):
         # A rectangle in Web Mercator meters around Tempe, AZ:
         rect_m = QgsRectangle(-12460000.0, 3951000.0, -12459000.0, 3952000.0)
         out = self.picker._transform_to_wgs84(rect_m)
-        # Expect longitudes near -111.93 and latitudes near 33.40
-        self.assertAlmostEqual(out.xMinimum(), -111.929617, places=3)
-        self.assertAlmostEqual(out.yMinimum(), 33.396142, places=3)
+        # y=3951000 m Web Mercator ≈ 33.4186° lat; x=-12460000 m ≈ -111.9301° lon
+        self.assertAlmostEqual(out.xMinimum(), -111.9301, places=3)
+        self.assertAlmostEqual(out.yMinimum(), 33.4186, places=3)
         self.assertTrue(out.xMaximum() > out.xMinimum())
         self.assertTrue(out.yMaximum() > out.yMinimum())
 
