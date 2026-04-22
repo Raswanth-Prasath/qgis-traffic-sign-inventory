@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TrafficSignInventoryDialogBase</class>
+ <widget class="QDialog" name="TrafficSignInventoryDialogBase">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>540</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>520</width>
+    <height>650</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Traffic Sign Inventory Tool</string>
+  </property>
+  <layout class="QVBoxLayout" name="main_layout">
+
+   <!-- Corridor Bounding Box Group -->
+   <item>
+    <widget class="QGroupBox" name="bbox_group">
+     <property name="title">
+      <string>Corridor Bounding Box</string>
+     </property>
+     <layout class="QGridLayout" name="bbox_layout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="method_label">
+        <property name="text">
+         <string>Method:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1" colspan="3">
+       <widget class="QComboBox" name="bbox_method">
+        <item>
+         <property name="text">
+          <string>Use current map extent</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Enter coordinates manually</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Draw on map (coming soon)</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="west_label">
+        <property name="text">
+         <string>West (min lon):</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QDoubleSpinBox" name="west_input">
+        <property name="minimum">
+         <double>-180.000000</double>
+        </property>
+        <property name="maximum">
+         <double>180.000000</double>
+        </property>
+        <property name="decimals">
+         <number>6</number>
+        </property>
+        <property name="value">
+         <double>-111.928000</double>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>130</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QLabel" name="east_label">
+        <property name="text">
+         <string>East (max lon):</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QDoubleSpinBox" name="east_input">
+        <property name="minimum">
+         <double>-180.000000</double>
+        </property>
+        <property name="maximum">
+         <double>180.000000</double>
+        </property>
+        <property name="decimals">
+         <number>6</number>
+        </property>
+        <property name="value">
+         <double>-111.920000</double>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>130</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="south_label">
+        <property name="text">
+         <string>South (min lat):</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QDoubleSpinBox" name="south_input">
+        <property name="minimum">
+         <double>-90.000000</double>
+        </property>
+        <property name="maximum">
+         <double>90.000000</double>
+        </property>
+        <property name="decimals">
+         <number>6</number>
+        </property>
+        <property name="value">
+         <double>33.408000</double>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>130</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QLabel" name="north_label">
+        <property name="text">
+         <string>North (max lat):</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="QDoubleSpinBox" name="north_input">
+        <property name="minimum">
+         <double>-90.000000</double>
+        </property>
+        <property name="maximum">
+         <double>90.000000</double>
+        </property>
+        <property name="decimals">
+         <number>6</number>
+        </property>
+        <property name="value">
+         <double>33.425000</double>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>130</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="4">
+       <widget class="QPushButton" name="grab_extent_btn">
+        <property name="text">
+         <string>Grab Current Map Extent</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+
+   <!-- Filters Group -->
+   <item>
+    <widget class="QGroupBox" name="filter_group">
+     <property name="title">
+      <string>Filters</string>
+     </property>
+     <layout class="QVBoxLayout" name="filter_layout">
+      <item>
+       <widget class="QCheckBox" name="fetch_signs_check">
+        <property name="text">
+         <string>Fetch traffic signs</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="sign_filter_label">
+        <property name="text">
+         <string>Sign filter:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="filter_category">
+        <item>
+         <property name="text">
+          <string>All sign types</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Regulatory only</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Warning only</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Information / Guide only</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Stop &amp; Yield only</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Speed Limit only</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="fetch_points_check">
+        <property name="text">
+         <string>Fetch point features (signals, markings, infrastructure)</string>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="point_filter_label">
+        <property name="text">
+         <string>Point feature filter:</string>
+        </property>
+        <property name="visible">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="point_filter_category">
+        <property name="visible">
+         <bool>false</bool>
+        </property>
+        <item>
+         <property name="text">
+          <string>All point features</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Signals only</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Markings only</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Infrastructure only</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Furniture only</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Traffic control only</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="enrich_check">
+        <property name="text">
+         <string>Enrich with detailed metadata (slower but more accurate coordinates)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+
+   <!-- Run Button -->
+   <item>
+    <widget class="QPushButton" name="run_btn">
+     <property name="text">
+      <string>Fetch Features</string>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>40</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+    </widget>
+   </item>
+
+   <!-- Progress Bar -->
+   <item>
+    <widget class="QProgressBar" name="progress_bar">
+     <property name="visible">
+      <bool>false</bool>
+     </property>
+     <property name="value">
+      <number>0</number>
+     </property>
+    </widget>
+   </item>
+
+   <!-- Status Label -->
+   <item>
+    <widget class="QLabel" name="status_label">
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+
+   <!-- Results & Export Group -->
+   <item>
+    <widget class="QGroupBox" name="export_group">
+     <property name="title">
+      <string>Results &amp; Export</string>
+     </property>
+     <layout class="QVBoxLayout" name="export_layout">
+      <item>
+       <widget class="QTextEdit" name="results_text">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>150</height>
+         </size>
+        </property>
+        <property name="placeholderText">
+         <string>Results will appear here after fetching...</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="btn_layout">
+        <item>
+         <widget class="QPushButton" name="export_geojson_btn">
+          <property name="text">
+           <string>Export GeoJSON</string>
+          </property>
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="export_shp_btn">
+          <property name="text">
+           <string>Export Shapefile</string>
+          </property>
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="export_csv_btn">
+          <property name="text">
+           <string>Export CSV</string>
+          </property>
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

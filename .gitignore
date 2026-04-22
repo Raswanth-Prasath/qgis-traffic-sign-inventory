@@ -1,0 +1,34 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+*.qm
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+.env
+
+# Secrets — never commit
+config.py
+
+# Local Claude Code context
+CLAUDE.md
+.claude/
+
+# Build artifacts
+traffic_sign_inventory*.zip
+/help/build/
+
+# Dev-only HTML exports
+experiment_architecture.html
+README.html

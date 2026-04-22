@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/traffic_sign_inventory" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>

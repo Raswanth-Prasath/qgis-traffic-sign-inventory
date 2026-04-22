@@ -1,0 +1,51 @@
+# This file contains metadata for your plugin.
+# This file should be included when you package your plugin.
+
+[general]
+name=Traffic Sign Inventory
+qgisMinimumVersion=3.6
+description=Automated traffic sign inventory from Mapillary detections with MUTCD mapping and export.
+version=0.1.0
+author=Raswanth Prasath
+email=raswanth@asu.edu
+
+about=Build a traffic-sign and point-feature inventory for any corridor by
+ pulling Mapillary's crowdsourced detections, mapping each sign to its
+ US MUTCD code and category (regulatory / warning / information), and
+ exporting to GeoJSON, Shapefile, or CSV. Also supports point features
+ — traffic signals, crosswalks, lane arrows, fire hydrants, street
+ lights, and more — with category-based symbology in the map view.
+ .
+ Requires a free Mapillary API token (configured via the plugin's
+ Settings dialog; stored in your QGIS user profile via QSettings).
+ .
+ No external Python dependencies — all HTTP goes through QgsNetwork-
+ AccessManager (so the plugin inherits your QGIS proxy and SSL
+ settings), and Web Mercator tile math plus a minimal MVT Point
+ decoder are included in-tree. Nothing needs to be pip-installed.
+
+license=GPL-2.0-or-later
+tracker=https://github.com/Raswanth-Prasath/qgis-traffic-sign-inventory/issues
+repository=https://github.com/Raswanth-Prasath/qgis-traffic-sign-inventory
+homepage=https://github.com/Raswanth-Prasath/qgis-traffic-sign-inventory#readme
+
+hasProcessingProvider=no
+
+changelog=0.1.0 (2026-04-22)
+ - Initial release.
+ - Fetch traffic signs and point features from Mapillary by bounding box.
+ - MUTCD code + category mapping for ~130 US sign types.
+ - Optional enrichment pass for precise coordinates and image IDs.
+ - Export to GeoJSON, Shapefile, or CSV.
+ - Categorized symbology by feature category.
+ - Settings dialog for per-user Mapillary API token (stored in QSettings).
+
+tags=mapillary,traffic sign,mutcd,street view,transportation,inventory,vector tiles,road,infrastructure
+
+category=Vector
+icon=icon.png
+
+experimental=True
+deprecated=False
+
+server=False
