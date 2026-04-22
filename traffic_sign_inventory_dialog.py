@@ -134,13 +134,38 @@ class MapExtentPicker(QObject):
         self._persistent_band = None
 
     def activate(self):
-        raise NotImplementedError
+        from qgis.gui import QgsMapToolExtent
+        self._previous_tool = self._canvas.mapTool()
+        self._map_tool = QgsMapToolExtent(self._canvas)
+        self._map_tool.extentChanged.connect(self._on_extent_changed)
+        self._canvas.setMapTool(self._map_tool)
+        try:
+            self.iface.messageBar().pushMessage(
+                "Draw on map",
+                "Drag a rectangle to define the area. Press ESC to cancel.",
+                level=0,
+                duration=0,
+            )
+        except Exception:
+            # messageBar may not be available in the test harness; non-fatal.
+            pass
 
     def cancel(self):
         raise NotImplementedError
 
     def deactivate(self):
-        raise NotImplementedError
+        if self._map_tool is not None:
+            try:
+                self._map_tool.extentChanged.disconnect(self._on_extent_changed)
+            except TypeError:
+                pass
+            if self._previous_tool is not None:
+                self._canvas.setMapTool(self._previous_tool)
+            self._map_tool = None
+        try:
+            self.iface.messageBar().clearWidgets()
+        except Exception:
+            pass
 
     def clear_rubber_band(self):
         raise NotImplementedError

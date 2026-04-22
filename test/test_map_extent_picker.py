@@ -37,5 +37,29 @@ class CrsTransformTest(unittest.TestCase):
         self.assertTrue(out.yMaximum() > out.yMinimum())
 
 
+from qgis.gui import QgsMapToolPan
+
+
+class MapToolLifecycleTest(unittest.TestCase):
+
+    def setUp(self):
+        self.picker = MapExtentPicker(IFACE)
+        self.pan_tool = QgsMapToolPan(CANVAS)
+        CANVAS.setMapTool(self.pan_tool)
+
+    def tearDown(self):
+        self.picker = None
+        self.pan_tool = None
+
+    def test_activate_saves_previous_map_tool(self):
+        self.picker.activate()
+        self.assertIs(self.picker._previous_tool, self.pan_tool)
+
+    def test_deactivate_restores_previous_map_tool(self):
+        self.picker.activate()
+        self.picker.deactivate()
+        self.assertIs(CANVAS.mapTool(), self.pan_tool)
+
+
 if __name__ == "__main__":
     unittest.main()
