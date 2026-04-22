@@ -75,5 +75,33 @@ class MapToolLifecycleTest(unittest.TestCase):
         self.assertIsNot(self.picker._map_tool, first_extent_tool)
 
 
+class ExtentPickedSignalTest(unittest.TestCase):
+
+    def setUp(self):
+        CANVAS.setDestinationCrs(QgsCoordinateReferenceSystem("EPSG:4326"))
+        self.picker = MapExtentPicker(IFACE)
+        self.received = []
+        self.picker.extent_picked.connect(lambda r: self.received.append(r))
+
+    def tearDown(self):
+        try:
+            self.picker.deactivate()
+        except Exception:
+            pass
+        self.picker = None
+
+    def test_extent_picked_signal_emitted_on_draw_complete(self):
+        rect = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
+        self.picker._on_extent_changed(rect)
+        self.assertEqual(len(self.received), 1)
+        out = self.received[0]
+        self.assertAlmostEqual(out.xMinimum(), -111.93, places=6)
+
+    def test_zero_size_rect_is_ignored(self):
+        rect = QgsRectangle(-111.93, 33.40, -111.93, 33.40)
+        self.picker._on_extent_changed(rect)
+        self.assertEqual(len(self.received), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

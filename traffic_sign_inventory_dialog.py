@@ -182,7 +182,36 @@ class MapExtentPicker(QObject):
         raise NotImplementedError
 
     def _on_extent_changed(self, rect):
-        raise NotImplementedError
+        if rect.width() == 0 or rect.height() == 0:
+            return
+        rect_wgs84 = self._transform_to_wgs84(rect)
+        self._draw_persistent_band(rect)
+        self.extent_picked.emit(rect_wgs84)
+        self.deactivate()
+
+    def _draw_persistent_band(self, rect):
+        from qgis.gui import QgsRubberBand
+        from qgis.core import QgsWkbTypes
+        from qgis.PyQt.QtGui import QColor
+        if self._persistent_band is not None:
+            self._canvas.scene().removeItem(self._persistent_band)
+            self._persistent_band = None
+        band = QgsRubberBand(self._canvas, QgsWkbTypes.PolygonGeometry)
+        band.setToGeometry(self._rect_to_polygon_geom(rect), None)
+        band.setColor(QColor(255, 0, 0, 80))
+        band.setStrokeColor(QColor(200, 0, 0, 200))
+        band.setWidth(2)
+        self._persistent_band = band
+
+    def _rect_to_polygon_geom(self, rect):
+        from qgis.core import QgsGeometry, QgsPointXY
+        pts = [
+            QgsPointXY(rect.xMinimum(), rect.yMinimum()),
+            QgsPointXY(rect.xMaximum(), rect.yMinimum()),
+            QgsPointXY(rect.xMaximum(), rect.yMaximum()),
+            QgsPointXY(rect.xMinimum(), rect.yMaximum()),
+        ]
+        return QgsGeometry.fromPolygonXY([pts])
 
     def _transform_to_wgs84(self, rect):
         from qgis.core import (
