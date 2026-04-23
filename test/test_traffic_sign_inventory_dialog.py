@@ -72,6 +72,26 @@ class DrawOnMapIntegrationTest(unittest.TestCase):
     def test_redraw_button_hidden_by_default(self):
         self.assertFalse(self.dialog.redraw_btn.isVisible())
 
+    def test_extent_picked_populates_inputs(self):
+        rect = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
+        self.dialog._on_extent_picked(rect)
+        self.assertAlmostEqual(self.dialog.west_input.value(), -111.93, places=4)
+        self.assertAlmostEqual(self.dialog.south_input.value(), 33.40, places=4)
+        self.assertAlmostEqual(self.dialog.east_input.value(), -111.92, places=4)
+        self.assertAlmostEqual(self.dialog.north_input.value(), 33.41, places=4)
+
+    def test_extent_picked_restores_dialog(self):
+        self.dialog.hide()
+        rect = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
+        self.dialog._on_extent_picked(rect)
+        self.assertTrue(self.dialog.isVisible())
+
+    def test_redraw_button_visible_after_first_draw(self):
+        rect = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
+        self.dialog.show()
+        self.dialog._on_extent_picked(rect)
+        self.assertTrue(self.dialog.redraw_btn.isVisible())
+
 
 if __name__ == "__main__":
     suite = unittest.makeSuite(TrafficSignInventoryDialogTest)

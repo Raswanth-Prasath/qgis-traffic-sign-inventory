@@ -337,8 +337,14 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
         self.extent_picker.activate()
 
     def _on_extent_picked(self, rect):
-        # Implemented in Task 9.
-        pass
+        self.west_input.setValue(rect.xMinimum())
+        self.south_input.setValue(rect.yMinimum())
+        self.east_input.setValue(rect.xMaximum())
+        self.north_input.setValue(rect.yMaximum())
+        self.redraw_btn.setVisible(True)
+        self.show()
+        self.raise_()
+        self.activateWindow()
 
     def _on_draw_cancelled(self):
         self.show()
