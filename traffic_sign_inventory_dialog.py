@@ -321,13 +321,12 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
         self.point_filter_category.setVisible(points_on)
 
     def _on_bbox_method_changed(self, idx):
+        if idx != 2 and self.extent_picker is not None:
+            self.extent_picker.clear_rubber_band()
         if idx == 0:
             self._grab_map_extent()
         elif idx == 2:
             self._start_draw()
-        else:
-            if self.extent_picker is not None:
-                self.extent_picker.clear_rubber_band()
 
     # ---- Draw on map ----
 
