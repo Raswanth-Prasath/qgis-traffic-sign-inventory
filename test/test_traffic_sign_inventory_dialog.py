@@ -14,11 +14,9 @@ __copyright__ = 'Copyright 2026, Raswanth'
 
 import unittest
 
-from qgis.PyQt.QtGui import QDialogButtonBox, QDialog
-
 from traffic_sign_inventory_dialog import TrafficSignInventoryDialog
 
-from utilities import get_qgis_app
+from test.utilities import get_qgis_app
 QGIS_APP = get_qgis_app()
 
 
@@ -27,28 +25,25 @@ class TrafficSignInventoryDialogTest(unittest.TestCase):
 
     def setUp(self):
         """Runs before each test."""
-        self.dialog = TrafficSignInventoryDialog(None)
+        self.qgis_app, self.canvas, self.iface, self.parent = get_qgis_app()
+        self.dialog = TrafficSignInventoryDialog(self.iface)
 
     def tearDown(self):
         """Runs after each test."""
         self.dialog = None
 
     def test_dialog_ok(self):
-        """Test we can click OK."""
-
-        button = self.dialog.button_box.button(QDialogButtonBox.Ok)
-        button.click()
-        result = self.dialog.result()
-        self.assertEqual(result, QDialog.Accepted)
+        """Test the main action button is present."""
+        self.assertEqual(self.dialog.run_btn.text(), "Fetch Features")
 
     def test_dialog_cancel(self):
-        """Test we can click cancel."""
-        button = self.dialog.button_box.button(QDialogButtonBox.Cancel)
-        button.click()
-        result = self.dialog.result()
-        self.assertEqual(result, QDialog.Rejected)
+        """Test the dialog closes cleanly."""
+        self.dialog.show()
+        self.dialog.close()
+        self.assertFalse(self.dialog.isVisible())
 
 from qgis.core import QgsRectangle
+from qgis.gui import QgsMapToolPan
 
 
 class DrawOnMapIntegrationTest(unittest.TestCase):
@@ -74,6 +69,7 @@ class DrawOnMapIntegrationTest(unittest.TestCase):
 
     def test_extent_picked_populates_inputs(self):
         rect = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
+        self.dialog.bbox_method.setCurrentIndex(2)
         self.dialog._on_extent_picked(rect)
         self.assertAlmostEqual(self.dialog.west_input.value(), -111.93, places=4)
         self.assertAlmostEqual(self.dialog.south_input.value(), 33.40, places=4)
@@ -105,12 +101,22 @@ class DrawOnMapIntegrationTest(unittest.TestCase):
 
     def test_switching_bbox_method_clears_rubber_band(self):
         rect = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
-        self.dialog._start_draw()
+        self.dialog.bbox_method.setCurrentIndex(2)
         self.dialog.extent_picker._on_extent_changed(rect)
         self.assertIsNotNone(self.dialog.extent_picker._persistent_band)
 
         self.dialog.bbox_method.setCurrentIndex(0)  # Use current map extent
         self.assertIsNone(self.dialog.extent_picker._persistent_band)
+
+    def test_switching_bbox_method_hides_redraw_button(self):
+        rect = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
+        self.dialog.show()
+        self.dialog.bbox_method.setCurrentIndex(2)
+        self.dialog._on_extent_picked(rect)
+        self.assertTrue(self.dialog.redraw_btn.isVisible())
+
+        self.dialog.bbox_method.setCurrentIndex(0)
+        self.assertFalse(self.dialog.redraw_btn.isVisible())
 
     def test_close_event_cancels_picker_and_clears_band(self):
         rect = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
@@ -137,9 +143,17 @@ class DrawOnMapIntegrationTest(unittest.TestCase):
         self.assertEqual(self.dialog.bbox_method.currentIndex(), 1)
         self.assertTrue(self.dialog.isVisible())
 
+    def test_switching_map_tools_restores_dialog(self):
+        self.dialog.show()
+        self.dialog.bbox_method.setCurrentIndex(2)
+        other_tool = QgsMapToolPan(self.canvas)
+        self.canvas.setMapTool(other_tool)
+        self.assertEqual(self.dialog.bbox_method.currentIndex(), 1)
+        self.assertTrue(self.dialog.isVisible())
+        self.assertIs(self.canvas.mapTool(), other_tool)
+
 
 if __name__ == "__main__":
     suite = unittest.makeSuite(TrafficSignInventoryDialogTest)
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
-

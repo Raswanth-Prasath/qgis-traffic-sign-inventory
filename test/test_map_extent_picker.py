@@ -5,10 +5,39 @@ import unittest
 
 from qgis.core import QgsRectangle, QgsCoordinateReferenceSystem
 
-from utilities import get_qgis_app
+from test.utilities import get_qgis_app
 from traffic_sign_inventory_dialog import MapExtentPicker
 
 QGIS_APP, CANVAS, IFACE, PARENT = get_qgis_app()
+
+
+class FakeMessageBar(object):
+
+    def __init__(self):
+        self.popped = []
+        self.clear_calls = 0
+
+    def pushMessage(self, *args, **kwargs):
+        return object()
+
+    def popWidget(self, item):
+        self.popped.append(item)
+
+    def clearWidgets(self):
+        self.clear_calls += 1
+
+
+class FakeIface(object):
+
+    def __init__(self, canvas, message_bar):
+        self._canvas = canvas
+        self._message_bar = message_bar
+
+    def mapCanvas(self):
+        return self._canvas
+
+    def messageBar(self):
+        return self._message_bar
 
 
 class CrsTransformTest(unittest.TestCase):
@@ -154,6 +183,40 @@ class CancelTest(unittest.TestCase):
         self.assertEqual(self.picked, [])
         self.assertEqual(len(self.cancelled), 1)
         self.assertIs(CANVAS.mapTool(), self.pan_tool)
+
+    def test_switching_map_tools_emits_draw_cancelled(self):
+        self.picker.activate()
+        other_tool = QgsMapToolPan(CANVAS)
+        CANVAS.setMapTool(other_tool)
+        self.assertEqual(self.picked, [])
+        self.assertEqual(len(self.cancelled), 1)
+        self.assertIs(CANVAS.mapTool(), other_tool)
+        self.assertIsNone(self.picker._map_tool)
+
+
+class MessageBarLifecycleTest(unittest.TestCase):
+
+    def setUp(self):
+        self.message_bar = FakeMessageBar()
+        self.iface = FakeIface(CANVAS, self.message_bar)
+        self.picker = MapExtentPicker(self.iface)
+        self.pan_tool = QgsMapToolPan(CANVAS)
+        CANVAS.setMapTool(self.pan_tool)
+
+    def tearDown(self):
+        try:
+            self.picker.deactivate()
+        except Exception:
+            pass
+        self.picker = None
+        self.pan_tool = None
+
+    def test_deactivate_pops_only_picker_hint(self):
+        self.picker.activate()
+        hint_item = self.picker._hint_item
+        self.picker.deactivate()
+        self.assertEqual(self.message_bar.popped, [hint_item])
+        self.assertEqual(self.message_bar.clear_calls, 0)
 
 
 if __name__ == "__main__":

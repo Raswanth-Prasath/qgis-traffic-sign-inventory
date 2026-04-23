@@ -132,25 +132,28 @@ class MapExtentPicker(QObject):
         self._previous_tool = None
         self._map_tool = None
         self._persistent_band = None
+        self._hint_item = None
 
     def activate(self):
         from qgis.gui import QgsMapToolExtent
         if self._map_tool is not None:
             # Already active — tear down the old tool, but DO NOT overwrite
             # _previous_tool, since that's the true pre-activation tool.
-            try:
-                self._map_tool.extentChanged.disconnect(self._on_extent_changed)
-            except TypeError:
-                pass
+            self._disconnect_map_tool(self._map_tool)
             self._map_tool = None
         else:
             # First activation: save the pre-picker tool for restoration.
             self._previous_tool = self._canvas.mapTool()
         self._map_tool = QgsMapToolExtent(self._canvas)
         self._map_tool.extentChanged.connect(self._on_extent_changed)
-        self._canvas.setMapTool(self._map_tool)
         try:
-            self.iface.messageBar().pushMessage(
+            self._map_tool.deactivated.connect(self._on_map_tool_deactivated)
+        except AttributeError:
+            pass
+        self._canvas.setMapTool(self._map_tool)
+        self._clear_hint()
+        try:
+            self._hint_item = self.iface.messageBar().pushMessage(
                 "Draw on map",
                 "Drag a rectangle to define the area. Press ESC to cancel.",
                 level=0,
@@ -158,26 +161,15 @@ class MapExtentPicker(QObject):
             )
         except Exception:
             # messageBar may not be available in the test harness; non-fatal.
-            pass
+            self._hint_item = None
 
     def cancel(self):
         self.deactivate()
         self.draw_cancelled.emit()
 
     def deactivate(self):
-        if self._map_tool is not None:
-            try:
-                self._map_tool.extentChanged.disconnect(self._on_extent_changed)
-            except TypeError:
-                pass
-            if self._previous_tool is not None:
-                self._canvas.setMapTool(self._previous_tool)
-                self._previous_tool = None
-            self._map_tool = None
-        try:
-            self.iface.messageBar().clearWidgets()
-        except Exception:
-            pass
+        self._teardown_map_tool(restore_previous=True)
+        self._clear_hint()
 
     def clear_rubber_band(self):
         if self._persistent_band is not None:
@@ -228,6 +220,45 @@ class MapExtentPicker(QObject):
             return rect
         xform = QgsCoordinateTransform(canvas_crs, wgs84, QgsProject.instance())
         return xform.transformBoundingBox(rect)
+
+    def _disconnect_map_tool(self, map_tool):
+        try:
+            map_tool.extentChanged.disconnect(self._on_extent_changed)
+        except TypeError:
+            pass
+        try:
+            map_tool.deactivated.disconnect(self._on_map_tool_deactivated)
+        except (AttributeError, TypeError):
+            pass
+
+    def _teardown_map_tool(self, restore_previous):
+        map_tool = self._map_tool
+        previous_tool = self._previous_tool
+        if map_tool is not None:
+            self._disconnect_map_tool(map_tool)
+            self._map_tool = None
+            if (
+                restore_previous and previous_tool is not None
+                and self._canvas.mapTool() is map_tool
+            ):
+                self._canvas.setMapTool(previous_tool)
+        self._previous_tool = None
+
+    def _clear_hint(self):
+        if self._hint_item is None:
+            return
+        try:
+            self.iface.messageBar().popWidget(self._hint_item)
+        except Exception:
+            pass
+        self._hint_item = None
+
+    def _on_map_tool_deactivated(self):
+        if self._map_tool is None:
+            return
+        self._teardown_map_tool(restore_previous=False)
+        self._clear_hint()
+        self.draw_cancelled.emit()
 
 
 class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
@@ -324,7 +355,7 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
 
     def _on_bbox_method_changed(self, idx):
         if idx != 2 and self.extent_picker is not None:
-            self.extent_picker.clear_rubber_band()
+            self._reset_draw_preview()
         if idx == 0:
             self._grab_map_extent()
         elif idx == 2:
@@ -340,6 +371,11 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
         self.hide()
         self.extent_picker.activate()
 
+    def _reset_draw_preview(self):
+        if self.extent_picker is not None:
+            self.extent_picker.clear_rubber_band()
+        self.redraw_btn.setVisible(False)
+
     def _on_extent_picked(self, rect):
         self.west_input.setValue(rect.xMinimum())
         self.south_input.setValue(rect.yMinimum())
@@ -353,6 +389,7 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
     def _on_draw_cancelled(self):
         # User pressed ESC. Fall back to manual-entry mode so the combo UI
         # matches reality (no active picker, no rubber band).
+        self._reset_draw_preview()
         self.bbox_method.blockSignals(True)
         self.bbox_method.setCurrentIndex(1)
         self.bbox_method.blockSignals(False)
@@ -790,4 +827,3 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
                             self, "Error",
                             f"Shapefile export failed: {error[1]}"
                         )
-
