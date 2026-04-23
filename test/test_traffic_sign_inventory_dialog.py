@@ -121,6 +121,22 @@ class DrawOnMapIntegrationTest(unittest.TestCase):
         self.dialog.close()
         self.assertIsNone(self.dialog.extent_picker._persistent_band)
 
+    def test_close_event_does_not_reshow_dialog(self):
+        # closeEvent must NOT re-show the dialog via the draw_cancelled path.
+        rect = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
+        self.dialog._start_draw()
+        self.dialog.extent_picker._on_extent_changed(rect)
+        self.dialog.close()
+        self.assertFalse(self.dialog.isVisible())
+
+    def test_draw_cancelled_resets_combo_to_manual(self):
+        # ESC / draw_cancelled should leave the combo on index 1 (Manual),
+        # not stuck on index 2 (Draw on map).
+        self.dialog.bbox_method.setCurrentIndex(2)  # starts a draw (dialog hides)
+        self.dialog._on_draw_cancelled()
+        self.assertEqual(self.dialog.bbox_method.currentIndex(), 1)
+        self.assertTrue(self.dialog.isVisible())
+
 
 if __name__ == "__main__":
     suite = unittest.makeSuite(TrafficSignInventoryDialogTest)

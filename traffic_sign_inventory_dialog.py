@@ -266,7 +266,9 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
         """Cancel any running worker and tear down the extent picker."""
         self._cancel_worker()
         if self.extent_picker is not None:
-            self.extent_picker.cancel()
+            # Use deactivate() (not cancel()) to avoid emitting draw_cancelled,
+            # which would re-show the dialog mid-close.
+            self.extent_picker.deactivate()
             self.extent_picker.clear_rubber_band()
         self._cleanup_temp_geojson()
         super().closeEvent(event)
@@ -349,6 +351,11 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
         self.activateWindow()
 
     def _on_draw_cancelled(self):
+        # User pressed ESC. Fall back to manual-entry mode so the combo UI
+        # matches reality (no active picker, no rubber band).
+        self.bbox_method.blockSignals(True)
+        self.bbox_method.setCurrentIndex(1)
+        self.bbox_method.blockSignals(False)
         self.show()
         self.raise_()
         self.activateWindow()
