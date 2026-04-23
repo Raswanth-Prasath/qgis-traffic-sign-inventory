@@ -161,7 +161,8 @@ class MapExtentPicker(QObject):
             pass
 
     def cancel(self):
-        raise NotImplementedError
+        self.deactivate()
+        self.draw_cancelled.emit()
 
     def deactivate(self):
         if self._map_tool is not None:

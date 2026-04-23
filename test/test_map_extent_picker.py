@@ -128,5 +128,33 @@ class ClearRubberBandTest(unittest.TestCase):
         self.assertIsNone(self.picker._persistent_band)
 
 
+class CancelTest(unittest.TestCase):
+
+    def setUp(self):
+        CANVAS.setDestinationCrs(QgsCoordinateReferenceSystem("EPSG:4326"))
+        self.picker = MapExtentPicker(IFACE)
+        self.picked = []
+        self.cancelled = []
+        self.picker.extent_picked.connect(lambda r: self.picked.append(r))
+        self.picker.draw_cancelled.connect(lambda: self.cancelled.append(True))
+        self.pan_tool = QgsMapToolPan(CANVAS)
+        CANVAS.setMapTool(self.pan_tool)
+
+    def tearDown(self):
+        try:
+            self.picker.deactivate()
+        except Exception:
+            pass
+        self.picker = None
+        self.pan_tool = None
+
+    def test_cancel_does_not_emit_extent_picked(self):
+        self.picker.activate()
+        self.picker.cancel()
+        self.assertEqual(self.picked, [])
+        self.assertEqual(len(self.cancelled), 1)
+        self.assertIs(CANVAS.mapTool(), self.pan_tool)
+
+
 if __name__ == "__main__":
     unittest.main()
