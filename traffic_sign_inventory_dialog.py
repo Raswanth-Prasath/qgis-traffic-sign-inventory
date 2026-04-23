@@ -550,14 +550,17 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
         self._last_features = features
 
         if not features:
-            self.status_label.setText("No features found in this area.")
+            self.status_label.setText("No map features found in this area.")
             self.results_text.setPlainText(
-                "No features detected.\n\n"
+                "No map features detected.\n\n"
                 "Possible reasons:\n"
-                "- No Mapillary coverage in this area\n"
+                "- Mapillary has imagery here, but no triangulated traffic-sign "
+                "or point map features yet\n"
                 "- Bounding box is too small\n"
                 "- Filter too restrictive\n\n"
-                "Check coverage: https://www.mapillary.com/app/"
+                "When comparing in the Mapillary web app, turn on Map data "
+                "for traffic signs and points:\n"
+                "https://www.mapillary.com/app/"
             )
             return
 

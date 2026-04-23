@@ -52,7 +52,7 @@ class MapillaryClient:
 
     # ---- HTTP ---------------------------------------------------------
 
-    def _http_get(self, url):
+    def _http_get(self, url, include_auth_header=True):
         """GET `url` via QgsNetworkAccessManager.
 
         Returns `(status_code, content_bytes)` where `status_code` is
@@ -60,7 +60,8 @@ class MapillaryClient:
         """
         qurl = url if isinstance(url, QUrl) else QUrl(url)
         req = QNetworkRequest(qurl)
-        req.setRawHeader(b"Authorization", self._auth_header)
+        if include_auth_header:
+            req.setRawHeader(b"Authorization", self._auth_header)
         req.setAttribute(
             QNetworkRequest.RedirectPolicyAttribute,
             QNetworkRequest.NoLessSafeRedirectPolicy,
@@ -80,6 +81,13 @@ class MapillaryClient:
         url = QUrl(self.ENTITY_URL.format(id=entity_id))
         q = QUrlQuery()
         q.addQueryItem("fields", fields)
+        url.setQuery(q)
+        return url
+
+    def _build_tile_url(self, tile_layer, z, x, y):
+        url = QUrl(self.TILE_URL.format(tile_layer=tile_layer, z=z, x=x, y=y))
+        q = QUrlQuery()
+        q.addQueryItem("access_token", self.token)
         url.setQuery(q)
         return url
 
@@ -115,18 +123,32 @@ class MapillaryClient:
         seen_ids = set()
 
         for i, tile in enumerate(tile_list):
-            url = self.TILE_URL.format(
+            url = self._build_tile_url(
                 tile_layer=tile_layer, z=14, x=tile.x, y=tile.y,
             )
 
-            status, content = self._http_get(url)
+            status, content = self._http_get(url, include_auth_header=False)
 
             if status == 429:
                 self.log("Rate limited — waiting 60s", Qgis.Warning)
                 time.sleep(60)
-                status, content = self._http_get(url)
+                status, content = self._http_get(url, include_auth_header=False)
+
+            if status in (401, 403):
+                raise RuntimeError(
+                    "Mapillary rejected vector-tile access for the configured "
+                    "token (HTTP {}). Open Settings and test or replace the "
+                    "token.".format(status)
+                )
 
             if status != 200 or not content:
+                if status not in (None, 404):
+                    self.log(
+                        "Tile request for {} returned HTTP {}".format(
+                            mvt_layer_name, status
+                        ),
+                        Qgis.Warning,
+                    )
                 continue
 
             try:
@@ -309,7 +331,7 @@ class MapillaryClient:
     # ---- Connectivity / token check ----------------------------------
 
     def test_connection(self):
-        """Hit a cheap Mapillary endpoint to verify the token is valid."""
+        """Verify both Graph API and vector-tile access for the token."""
         url = QUrl(self.TEST_URL)
         q = QUrlQuery()
         q.addQueryItem("fields", "id")
@@ -317,4 +339,15 @@ class MapillaryClient:
         q.addQueryItem("limit", "1")
         url.setQuery(q)
         status, _ = self._http_get(url)
-        return status == 200
+        if status != 200:
+            return False
+
+        tile = next(tile_math.tiles(-111.93, 33.42, -111.92, 33.43, zooms=14), None)
+        if tile is None:
+            return False
+
+        tile_url = self._build_tile_url(
+            "mly_map_feature_traffic_sign", 14, tile.x, tile.y
+        )
+        tile_status, _ = self._http_get(tile_url, include_auth_header=False)
+        return tile_status not in (None, 401, 403)
