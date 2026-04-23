@@ -34,6 +34,7 @@ class MapillaryClient:
         "{tile_layer}/2/{z}/{x}/{y}"
     )
     ENTITY_URL = "https://graph.mapillary.com/{id}"
+    DETECTIONS_URL = "https://graph.mapillary.com/{id}/detections"
     TEST_URL = "https://graph.mapillary.com/images"
 
     def __init__(self, access_token):
@@ -106,6 +107,14 @@ class MapillaryClient:
         url = QUrl(self.ENTITY_URL.format(id=entity_id))
         q = QUrlQuery()
         q.addQueryItem("fields", fields)
+        url.setQuery(q)
+        return url
+
+    def _build_detections_url(self, entity_id, fields="image", limit=2000):
+        url = QUrl(self.DETECTIONS_URL.format(id=entity_id))
+        q = QUrlQuery()
+        q.addQueryItem("fields", fields)
+        q.addQueryItem("limit", str(limit))
         url.setQuery(q)
         return url
 
@@ -291,15 +300,11 @@ class MapillaryClient:
                 if data.get('last_seen_at'):
                     feat['last_seen_at'] = data['last_seen_at']
 
-                images = data.get('images', [])
-                if isinstance(images, list):
-                    feat['image_ids'] = [
-                        img.get('id') for img in images
-                        if isinstance(img, dict) and img.get('id')
-                    ]
-                    feat['num_observations'] = len(images)
-                else:
-                    feat['num_observations'] = 0
+                image_ids = self._extract_image_ids(data.get('images'))
+                if not image_ids:
+                    image_ids = self._fetch_detection_image_ids(feat['id'])
+                feat['image_ids'] = image_ids
+                feat['num_observations'] = len(image_ids)
 
                 feat['mapillary_link'] = (
                     "https://www.mapillary.com/app/"
@@ -325,6 +330,63 @@ class MapillaryClient:
                     break
 
         return features
+
+    def _extract_image_ids(self, images):
+        """Return image IDs from supported Mapillary image-reference shapes."""
+        if not images:
+            return []
+        if isinstance(images, dict):
+            images = images.get('data') or images.get('ids') or []
+        if not isinstance(images, list):
+            return []
+
+        ids = []
+        seen = set()
+        for item in images:
+            if isinstance(item, dict):
+                image_id = item.get('id')
+            else:
+                image_id = item
+            if image_id in (None, ""):
+                continue
+            image_id = str(image_id)
+            if image_id not in seen:
+                seen.add(image_id)
+                ids.append(image_id)
+        return ids
+
+    def _fetch_detection_image_ids(self, feature_id):
+        """Fallback count from the detections collection for a map feature."""
+        url = self._build_detections_url(feature_id)
+        status, content = self._http_get(url)
+        if status != 200 or not content:
+            return []
+        try:
+            data = json.loads(content.decode('utf-8', errors='replace'))
+        except ValueError:
+            return []
+
+        detections = data.get('data', [])
+        if not isinstance(detections, list):
+            return []
+
+        ids = []
+        seen = set()
+        for detection in detections:
+            if not isinstance(detection, dict):
+                continue
+            image = detection.get('image')
+            if isinstance(image, dict):
+                image_id = image.get('id')
+            else:
+                image_id = image
+            if image_id in (None, ""):
+                continue
+            image_id = str(image_id)
+            if image_id not in seen:
+                seen.add(image_id)
+                ids.append(image_id)
+        return ids
 
     def get_image_thumbnail(self, image_id, size=1024):
         """Get thumbnail URL + metadata for an image."""

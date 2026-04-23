@@ -3,6 +3,7 @@
 
 import os
 import sys
+import json
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.getcwd()))
@@ -123,6 +124,70 @@ class MapillaryClientAuthTest(unittest.TestCase):
 
         self.assertEqual(len(features), 1)
         self.assertEqual(features[0]['id'], 1)
+
+    def test_enrich_features_counts_image_id_list(self):
+        def fake_http_get(url, include_auth_header=True, timeout_ms=None):
+            data = {
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [-111.925, 33.423],
+                },
+                "images": ["img1", "img2", "img2"],
+            }
+            return 200, bytes(json.dumps(data), "utf-8")
+
+        self.client._http_get = fake_http_get
+
+        features = self.client.enrich_features([
+            {
+                'id': 'feature-1',
+                'value': 'regulatory--stop--g1',
+                'lng': -111.92,
+                'lat': 33.42,
+            }
+        ])
+
+        self.assertEqual(features[0]['image_ids'], ['img1', 'img2'])
+        self.assertEqual(features[0]['num_observations'], 2)
+
+    def test_enrich_features_falls_back_to_detection_images(self):
+        calls = []
+
+        def fake_http_get(url, include_auth_header=True, timeout_ms=None):
+            url_text = url.toString()
+            calls.append(url_text)
+            if url_text.endswith("/detections?fields=image&limit=2000"):
+                data = {
+                    "data": [
+                        {"image": {"id": "img1"}},
+                        {"image": {"id": "img2"}},
+                        {"image": {"id": "img2"}},
+                    ]
+                }
+                return 200, bytes(json.dumps(data), "utf-8")
+
+            data = {
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [-111.925, 33.423],
+                },
+            }
+            return 200, bytes(json.dumps(data), "utf-8")
+
+        self.client._http_get = fake_http_get
+
+        features = self.client.enrich_features([
+            {
+                'id': 'feature-1',
+                'value': 'regulatory--stop--g1',
+                'lng': -111.92,
+                'lat': 33.42,
+            }
+        ])
+
+        self.assertIn("/feature-1/detections", calls[1])
+        self.assertEqual(features[0]['image_ids'], ['img1', 'img2'])
+        self.assertEqual(features[0]['num_observations'], 2)
 
 
 if __name__ == "__main__":
