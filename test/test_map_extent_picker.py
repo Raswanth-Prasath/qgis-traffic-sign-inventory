@@ -96,6 +96,10 @@ class ExtentPickedSignalTest(unittest.TestCase):
         self.assertEqual(len(self.received), 1)
         out = self.received[0]
         self.assertAlmostEqual(out.xMinimum(), -111.93, places=6)
+        self.assertAlmostEqual(out.yMinimum(), 33.40, places=6)
+        self.assertAlmostEqual(out.xMaximum(), -111.92, places=6)
+        self.assertAlmostEqual(out.yMaximum(), 33.41, places=6)
+        self.assertIsNone(self.picker._map_tool)
 
     def test_zero_size_rect_is_ignored(self):
         rect = QgsRectangle(-111.93, 33.40, -111.93, 33.40)

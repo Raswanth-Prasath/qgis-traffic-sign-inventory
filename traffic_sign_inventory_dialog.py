@@ -184,10 +184,12 @@ class MapExtentPicker(QObject):
     def _on_extent_changed(self, rect):
         if rect.width() == 0 or rect.height() == 0:
             return
-        rect_wgs84 = self._transform_to_wgs84(rect)
-        self._draw_persistent_band(rect)
-        self.extent_picked.emit(rect_wgs84)
-        self.deactivate()
+        try:
+            rect_wgs84 = self._transform_to_wgs84(rect)
+            self._draw_persistent_band(rect)
+            self.extent_picked.emit(rect_wgs84)
+        finally:
+            self.deactivate()
 
     def _draw_persistent_band(self, rect):
         from qgis.gui import QgsRubberBand
