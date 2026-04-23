@@ -92,6 +92,17 @@ class DrawOnMapIntegrationTest(unittest.TestCase):
         self.dialog._on_extent_picked(rect)
         self.assertTrue(self.dialog.redraw_btn.isVisible())
 
+    def test_redraw_clears_previous_rubber_band(self):
+        # First draw sets up the picker + rubber band
+        rect1 = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
+        self.dialog._start_draw()  # lazy-init the picker
+        self.dialog.extent_picker._on_extent_changed(rect1)  # completes a draw, sets rubber band
+        self.assertIsNotNone(self.dialog.extent_picker._persistent_band)
+
+        # Re-draw should clear the band before re-activating
+        self.dialog._on_redraw_clicked()
+        self.assertIsNone(self.dialog.extent_picker._persistent_band)
+
 
 if __name__ == "__main__":
     suite = unittest.makeSuite(TrafficSignInventoryDialogTest)

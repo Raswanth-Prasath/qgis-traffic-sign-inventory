@@ -352,8 +352,9 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
         self.activateWindow()
 
     def _on_redraw_clicked(self):
-        # Implemented in Task 10.
-        pass
+        if self.extent_picker is not None:
+            self.extent_picker.clear_rubber_band()
+        self._start_draw()
 
     def _grab_map_extent(self):
         from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProject
