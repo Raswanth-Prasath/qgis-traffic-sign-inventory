@@ -251,6 +251,7 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
         self.settings_btn.clicked.connect(self._open_settings)
 
         self._connect_signals()
+        self.extent_picker = None  # lazy-init on first Draw activation
         # Grab extent on startup if method is "Use current map extent"
         if self.bbox_method.currentIndex() == 0:
             self._grab_map_extent()
@@ -303,6 +304,7 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
         self.export_geojson_btn.clicked.connect(lambda: self._export("geojson"))
         self.export_shp_btn.clicked.connect(lambda: self._export("shp"))
         self.export_csv_btn.clicked.connect(lambda: self._export("csv"))
+        self.redraw_btn.clicked.connect(self._on_redraw_clicked)
 
     # ---- UI callbacks ----
 
@@ -318,6 +320,34 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
     def _on_bbox_method_changed(self, idx):
         if idx == 0:
             self._grab_map_extent()
+        elif idx == 2:
+            self._start_draw()
+        else:
+            if self.extent_picker is not None:
+                self.extent_picker.clear_rubber_band()
+
+    # ---- Draw on map ----
+
+    def _start_draw(self):
+        if self.extent_picker is None:
+            self.extent_picker = MapExtentPicker(self.iface, self)
+            self.extent_picker.extent_picked.connect(self._on_extent_picked)
+            self.extent_picker.draw_cancelled.connect(self._on_draw_cancelled)
+        self.hide()
+        self.extent_picker.activate()
+
+    def _on_extent_picked(self, rect):
+        # Implemented in Task 9.
+        pass
+
+    def _on_draw_cancelled(self):
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def _on_redraw_clicked(self):
+        # Implemented in Task 10.
+        pass
 
     def _grab_map_extent(self):
         from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProject

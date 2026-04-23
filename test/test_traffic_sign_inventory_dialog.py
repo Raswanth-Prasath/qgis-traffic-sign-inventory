@@ -48,6 +48,31 @@ class TrafficSignInventoryDialogTest(unittest.TestCase):
         result = self.dialog.result()
         self.assertEqual(result, QDialog.Rejected)
 
+from qgis.core import QgsRectangle
+
+
+class DrawOnMapIntegrationTest(unittest.TestCase):
+
+    def setUp(self):
+        self.qgis_app, self.canvas, self.iface, self.parent = get_qgis_app()
+        self.dialog = TrafficSignInventoryDialog(self.iface)
+
+    def tearDown(self):
+        try:
+            self.dialog.close()
+        except Exception:
+            pass
+        self.dialog = None
+
+    def test_selecting_draw_on_map_hides_dialog(self):
+        self.dialog.show()
+        self.dialog.bbox_method.setCurrentIndex(2)
+        self.assertFalse(self.dialog.isVisible())
+
+    def test_redraw_button_hidden_by_default(self):
+        self.assertFalse(self.dialog.redraw_btn.isVisible())
+
+
 if __name__ == "__main__":
     suite = unittest.makeSuite(TrafficSignInventoryDialogTest)
     runner = unittest.TextTestRunner(verbosity=2)
