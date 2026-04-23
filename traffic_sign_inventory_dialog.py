@@ -10,7 +10,7 @@ from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import (
     QDialog, QFileDialog, QMessageBox, QPushButton
 )
-from qgis.PyQt.QtCore import Qt, QThread, pyqtSignal, QObject
+from qgis.PyQt.QtCore import Qt, QThread, pyqtSignal, QObject, QVariant
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'traffic_sign_inventory_dialog_base.ui'))
@@ -272,6 +272,7 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
         self.worker = None
         self._last_features = []
         self._temp_geojson_path = None
+        self._inventory_layer = None
 
         # Inline "Settings…" button above the Fetch button so users can
         # configure the Mapillary token without leaving the dialog.
@@ -620,7 +621,10 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
     # ---- Map layer ----
 
     def _build_feature_properties(self, feat):
-        from .mutcd_mapping import get_mutcd, get_point_info
+        try:
+            from .mutcd_mapping import get_mutcd, get_point_info
+        except ImportError:
+            from mutcd_mapping import get_mutcd, get_point_info
 
         source_layer = feat.get('source_layer', 'traffic_sign')
 
@@ -656,41 +660,12 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
             }
 
     def _add_to_map(self, features):
-        import json
-        import tempfile
         from qgis.core import (
-            QgsVectorLayer, QgsProject,
-            QgsCategorizedSymbolRenderer, QgsRendererCategory,
-            QgsMarkerSymbol
+            QgsProject, QgsCategorizedSymbolRenderer, QgsRendererCategory,
+            QgsMarkerSymbol,
         )
 
-        geojson_features = []
-        for feat in features:
-            props = self._build_feature_properties(feat)
-            geojson_features.append({
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'Point',
-                    'coordinates': [feat['lng'], feat['lat']]
-                },
-                'properties': props,
-            })
-
-        geojson = {
-            'type': 'FeatureCollection',
-            'features': geojson_features,
-        }
-
-        # Drop any previous temp file before writing a new one
-        self._cleanup_temp_geojson()
-        tmp = tempfile.NamedTemporaryFile(
-            suffix='.geojson', delete=False, mode='w'
-        )
-        json.dump(geojson, tmp, indent=2)
-        tmp.close()
-        self._temp_geojson_path = tmp.name
-
-        layer = QgsVectorLayer(tmp.name, "Feature Inventory", "ogr")
+        layer = self._create_feature_layer(features, "Feature Inventory")
         if not layer.isValid():
             QMessageBox.warning(self, "Error", "Failed to create map layer.")
             return
@@ -723,7 +698,49 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
         layer.setRenderer(renderer)
 
         QgsProject.instance().addMapLayer(layer)
+        self._inventory_layer = layer
         self.iface.mapCanvas().refresh()
+
+    def _create_feature_layer(self, features, name):
+        from qgis.core import (
+            QgsFeature, QgsField, QgsGeometry, QgsPointXY, QgsVectorLayer,
+        )
+
+        layer = QgsVectorLayer("Point?crs=EPSG:4326", name, "memory")
+        provider = layer.dataProvider()
+
+        field_defs = [
+            ('mapillary_id', QVariant.String),
+            ('mapillary_value', QVariant.String),
+            ('feature_type', QVariant.String),
+            ('category', QVariant.String),
+            ('mutcd_code', QVariant.String),
+            ('mutcd_description', QVariant.String),
+            ('description', QVariant.String),
+            ('first_seen', QVariant.String),
+            ('last_seen', QVariant.String),
+            ('num_observations', QVariant.Int),
+            ('mapillary_link', QVariant.String),
+        ]
+        provider.addAttributes([
+            QgsField(name, field_type) for name, field_type in field_defs
+        ])
+        layer.updateFields()
+
+        qgs_features = []
+        field_names = [field_name for field_name, _ in field_defs]
+        for feat in features:
+            props = self._build_feature_properties(feat)
+            qgs_feat = QgsFeature(layer.fields())
+            qgs_feat.setGeometry(
+                QgsGeometry.fromPointXY(QgsPointXY(feat['lng'], feat['lat']))
+            )
+            qgs_feat.setAttributes([props.get(name, '') for name in field_names])
+            qgs_features.append(qgs_feat)
+
+        provider.addFeatures(qgs_features)
+        layer.updateExtents()
+        return layer
 
     # ---- Export ----
 
@@ -811,22 +828,21 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
             if not path:
                 return
 
-            from qgis.core import QgsVectorLayer, QgsVectorFileWriter
+            from qgis.core import QgsVectorFileWriter
 
-            if self._temp_geojson_path:
-                layer = QgsVectorLayer(self._temp_geojson_path, "temp", "ogr")
-                if layer.isValid():
-                    error = QgsVectorFileWriter.writeAsVectorFormat(
-                        layer, path, "UTF-8",
-                        layer.crs(), "ESRI Shapefile"
-                    )
-                    if error[0] == QgsVectorFileWriter.NoError:
-                        QMessageBox.information(
-                            self, "Exported",
-                            f"Saved {layer.featureCount()} features to:\n{path}"
-                        )
-                    else:
-                        QMessageBox.warning(
-                            self, "Error",
-                            f"Shapefile export failed: {error[1]}"
-                        )
+            layer = self._create_feature_layer(
+                self._last_features, "Feature Inventory Export"
+            )
+            error = QgsVectorFileWriter.writeAsVectorFormat(
+                layer, path, "UTF-8", layer.crs(), "ESRI Shapefile"
+            )
+            if error[0] == QgsVectorFileWriter.NoError:
+                QMessageBox.information(
+                    self, "Exported",
+                    f"Saved {layer.featureCount()} features to:\n{path}"
+                )
+            else:
+                QMessageBox.warning(
+                    self, "Error",
+                    f"Shapefile export failed: {error[1]}"
+                )

@@ -21,9 +21,16 @@ build/
 # Secrets — never commit
 config.py
 
+# Local QGIS profile data
+symbology-style.db
+
 # Local Claude Code context
 CLAUDE.md
+AGENTS.md
 .claude/
+
+# Test cache directories created by QGIS/Pytest on Windows
+pytest-cache-files-*/
 
 # Build artifacts
 traffic_sign_inventory*.zip

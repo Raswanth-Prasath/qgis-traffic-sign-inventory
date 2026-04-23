@@ -42,7 +42,7 @@ class TrafficSignInventoryDialogTest(unittest.TestCase):
         self.dialog.close()
         self.assertFalse(self.dialog.isVisible())
 
-from qgis.core import QgsRectangle
+from qgis.core import QgsProject, QgsRectangle
 from qgis.gui import QgsMapToolPan
 
 
@@ -151,6 +151,56 @@ class DrawOnMapIntegrationTest(unittest.TestCase):
         self.assertEqual(self.dialog.bbox_method.currentIndex(), 1)
         self.assertTrue(self.dialog.isVisible())
         self.assertIs(self.canvas.mapTool(), other_tool)
+
+
+class FeatureLayerTest(unittest.TestCase):
+
+    def setUp(self):
+        self.qgis_app, self.canvas, self.iface, self.parent = get_qgis_app()
+        self.dialog = TrafficSignInventoryDialog(self.iface)
+
+    def tearDown(self):
+        project = QgsProject.instance()
+        if getattr(self.dialog, '_inventory_layer', None) is not None:
+            project.removeMapLayer(self.dialog._inventory_layer.id())
+        try:
+            self.dialog.close()
+        except Exception:
+            pass
+        self.dialog = None
+
+    def test_add_to_map_uses_memory_layer(self):
+        features = [{
+            'id': 'feature-1',
+            'value': 'regulatory--stop--g1',
+            'lng': -111.93,
+            'lat': 33.40,
+            'source_layer': 'traffic_sign',
+            'num_observations': 2,
+        }]
+
+        self.dialog._add_to_map(features)
+
+        layer = self.dialog._inventory_layer
+        self.assertIsNotNone(layer)
+        self.assertEqual(layer.providerType(), 'memory')
+        self.assertEqual(layer.featureCount(), 1)
+        self.assertIsNone(self.dialog._temp_geojson_path)
+
+    def test_close_does_not_remove_inventory_layer(self):
+        features = [{
+            'id': 'feature-1',
+            'value': 'regulatory--stop--g1',
+            'lng': -111.93,
+            'lat': 33.40,
+            'source_layer': 'traffic_sign',
+        }]
+        self.dialog._add_to_map(features)
+        layer_id = self.dialog._inventory_layer.id()
+
+        self.dialog.close()
+
+        self.assertIsNotNone(QgsProject.instance().mapLayer(layer_id))
 
 
 if __name__ == "__main__":

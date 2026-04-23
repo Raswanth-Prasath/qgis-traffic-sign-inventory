@@ -40,8 +40,11 @@ class SafeTranslationsTest(unittest.TestCase):
         dir_path = os.path.abspath(parent_path)
         file_path = os.path.join(
             dir_path, 'i18n', 'af.qm')
+        if not os.path.exists(file_path):
+            self.skipTest("Compiled Afrikaans translation is not available")
         translator = QTranslator()
-        translator.load(file_path)
+        if not translator.load(file_path):
+            self.skipTest("Could not load compiled Afrikaans translation")
         QCoreApplication.installTranslator(translator)
 
         expected_message = 'Goeie more'

@@ -3,7 +3,7 @@
 
 [general]
 name=Traffic Sign Inventory
-qgisMinimumVersion=3.6
+qgisMinimumVersion=3.36
 description=Automated traffic sign inventory from Mapillary detections with MUTCD mapping and export.
 version=0.1.0
 author=Raswanth Prasath

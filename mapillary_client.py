@@ -27,8 +27,8 @@ MAPILLARY_TEST_TIMEOUT_MS = 5000
 class MapillaryClient:
     """Client for Mapillary API v4."""
 
-    # Token is sent via Authorization header only — never in the URL, so
-    # it cannot leak into proxy logs or exception strings.
+    # Graph API requests use an Authorization header. Vector tile requests use
+    # Mapillary's access_token query parameter, so logs and errors are redacted.
     TILE_URL = (
         "https://tiles.mapillary.com/maps/vtp/"
         "{tile_layer}/2/{z}/{x}/{y}"
