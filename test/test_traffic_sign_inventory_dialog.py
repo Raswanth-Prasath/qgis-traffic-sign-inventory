@@ -103,6 +103,24 @@ class DrawOnMapIntegrationTest(unittest.TestCase):
         self.dialog._on_redraw_clicked()
         self.assertIsNone(self.dialog.extent_picker._persistent_band)
 
+    def test_switching_bbox_method_clears_rubber_band(self):
+        rect = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
+        self.dialog._start_draw()
+        self.dialog.extent_picker._on_extent_changed(rect)
+        self.assertIsNotNone(self.dialog.extent_picker._persistent_band)
+
+        self.dialog.bbox_method.setCurrentIndex(0)  # Use current map extent
+        self.assertIsNone(self.dialog.extent_picker._persistent_band)
+
+    def test_close_event_cancels_picker_and_clears_band(self):
+        rect = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
+        self.dialog._start_draw()
+        self.dialog.extent_picker._on_extent_changed(rect)
+        self.assertIsNotNone(self.dialog.extent_picker._persistent_band)
+
+        self.dialog.close()
+        self.assertIsNone(self.dialog.extent_picker._persistent_band)
+
 
 if __name__ == "__main__":
     suite = unittest.makeSuite(TrafficSignInventoryDialogTest)

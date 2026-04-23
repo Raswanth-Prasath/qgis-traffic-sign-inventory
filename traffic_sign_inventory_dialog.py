@@ -263,8 +263,11 @@ class TrafficSignInventoryDialog(QDialog, FORM_CLASS):
             self._grab_map_extent()
 
     def closeEvent(self, event):
-        """Cancel any running worker when the dialog is closed."""
+        """Cancel any running worker and tear down the extent picker."""
         self._cancel_worker()
+        if self.extent_picker is not None:
+            self.extent_picker.cancel()
+            self.extent_picker.clear_rubber_band()
         self._cleanup_temp_geojson()
         super().closeEvent(event)
 
