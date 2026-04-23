@@ -166,11 +166,6 @@ class MapillaryClient:
             for feat in layer.get('features', []):
                 props = feat.get('properties') or {}
                 feat_id = props.get('id') or feat.get('id')
-                if feat_id in seen_ids:
-                    continue
-                if feat_id is not None:
-                    seen_ids.add(feat_id)
-
                 feat_value = props.get('value', 'unknown')
                 if value_filter and feat_value not in value_filter:
                     continue
@@ -184,6 +179,12 @@ class MapillaryClient:
                 lng, lat = self._mvt_to_lnglat(
                     raw_coords, tile.x, tile.y, 14, extent
                 )
+                if not self._point_in_bbox(lng, lat, bbox):
+                    continue
+                if feat_id in seen_ids:
+                    continue
+                if feat_id is not None:
+                    seen_ids.add(feat_id)
 
                 all_features.append({
                     'id': feat_id,
@@ -327,6 +328,10 @@ class MapillaryClient:
         lng = b.west + (b.east - b.west) * x_ratio
         lat = b.south + (b.north - b.south) * y_ratio
         return lng, lat
+
+    def _point_in_bbox(self, lng, lat, bbox):
+        west, south, east, north = bbox
+        return west <= lng <= east and south <= lat <= north
 
     # ---- Connectivity / token check ----------------------------------
 
