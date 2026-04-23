@@ -29,7 +29,7 @@ class MapillaryClientAuthTest(unittest.TestCase):
     def test_fetch_features_raises_on_tile_auth_failure(self):
         calls = []
 
-        def fake_http_get(url, include_auth_header=True):
+        def fake_http_get(url, include_auth_header=True, timeout_ms=None):
             calls.append((url.toString(), include_auth_header))
             return 403, b""
 
@@ -49,19 +49,34 @@ class MapillaryClientAuthTest(unittest.TestCase):
             (403, b""),
         ]
 
-        def fake_http_get(url, include_auth_header=True):
-            calls.append((url.toString(), include_auth_header))
+        def fake_http_get(url, include_auth_header=True, timeout_ms=None):
+            calls.append((url.toString(), include_auth_header, timeout_ms))
             return responses.pop(0)
 
         self.client._http_get = fake_http_get
 
-        self.assertFalse(self.client.test_connection())
+        progress = []
+        self.assertFalse(
+            self.client.test_connection(
+                timeout_ms=1234,
+                progress_callback=progress.append,
+            )
+        )
         self.assertEqual(len(calls), 2)
         self.assertTrue(calls[0][1])
         self.assertIn("graph.mapillary.com/images", calls[0][0])
+        self.assertEqual(calls[0][2], 1234)
         self.assertFalse(calls[1][1])
         self.assertIn("tiles.mapillary.com/maps/vtp/", calls[1][0])
         self.assertIn("access_token=", calls[1][0])
+        self.assertEqual(calls[1][2], 1234)
+        self.assertEqual(
+            progress,
+            [
+                "Checking Mapillary Graph API...",
+                "Checking Mapillary vector tiles...",
+            ],
+        )
 
     def test_fetch_features_clips_results_to_bbox(self):
         bbox = (-111.93, 33.42, -111.92, 33.43)
@@ -77,7 +92,7 @@ class MapillaryClientAuthTest(unittest.TestCase):
         outside = raw_point(bounds.west + 0.0005, bounds.south + 0.0005)
         original_decode = mapillary_client_module.mvt_decoder.decode
 
-        def fake_http_get(url, include_auth_header=True):
+        def fake_http_get(url, include_auth_header=True, timeout_ms=None):
             return 200, b"fake"
 
         def fake_decode(content):

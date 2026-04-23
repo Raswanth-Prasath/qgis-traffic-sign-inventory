@@ -6,7 +6,7 @@ Stores the Mapillary access token in QSettings under the
 the plugin directory.
 """
 
-from qgis.PyQt.QtCore import QSettings, Qt
+from qgis.PyQt.QtCore import QSettings, Qt, QThread, pyqtSignal
 from qgis.PyQt.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QMessageBox, QDialogButtonBox, QFrame
@@ -15,6 +15,28 @@ from qgis.PyQt.QtWidgets import (
 SETTINGS_ORG = "TrafficSignInventory"
 SETTINGS_KEY_TOKEN = "mapillary/access_token"
 MAPILLARY_DEVELOPER_URL = "https://www.mapillary.com/dashboard/developers"
+
+
+class TokenTestWorker(QThread):
+    """Background worker for validating a Mapillary token."""
+
+    progress = pyqtSignal(str)
+    result = pyqtSignal(bool)
+    error = pyqtSignal(str)
+
+    def __init__(self, token, parent=None):
+        super().__init__(parent)
+        self.token = token
+
+    def run(self):
+        try:
+            from .mapillary_client import MapillaryClient
+            client = MapillaryClient(self.token)
+            ok = client.test_connection(progress_callback=self.progress.emit)
+            self.result.emit(ok)
+        except Exception as e:
+            msg = str(e).replace(self.token, "<redacted>")
+            self.error.emit(msg)
 
 
 def get_mapillary_token():
@@ -36,6 +58,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Traffic Sign Inventory — Settings")
         self.setMinimumWidth(520)
+        self._test_worker = None
 
         layout = QVBoxLayout(self)
 
@@ -93,12 +116,12 @@ class SettingsDialog(QDialog):
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
 
-        buttons = QDialogButtonBox(
+        self.button_box = QDialogButtonBox(
             QDialogButtonBox.Save | QDialogButtonBox.Cancel
         )
-        buttons.accepted.connect(self._save)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        self.button_box.accepted.connect(self._save)
+        self.button_box.rejected.connect(self.reject)
+        layout.addWidget(self.button_box)
 
     def _toggle_visibility(self, on):
         self.token_input.setEchoMode(
@@ -110,9 +133,16 @@ class SettingsDialog(QDialog):
         return self.token_input.text().strip()
 
     def _is_plausible_token(self, token):
-        return bool(token) and token.startswith("MLY|") and token.count("|") >= 2
+        return (
+            bool(token)
+            and token.startswith("MLY|")
+            and token.count("|") >= 2
+        )
 
     def _test_connection(self):
+        if self._test_worker is not None:
+            return
+
         token = self._current_token()
         if not self._is_plausible_token(token):
             self.status_label.setText(
@@ -121,29 +151,65 @@ class SettingsDialog(QDialog):
             )
             return
 
-        self.status_label.setText("Testing…")
+        self.status_label.setText("Checking Mapillary Graph API...")
         self.test_btn.setEnabled(False)
-        try:
-            from .mapillary_client import MapillaryClient
-            client = MapillaryClient(token)
-            ok = client.test_connection()
-            if ok:
-                self.status_label.setText(
-                    "<span style='color:#27ae60'>✓ Connection OK — token "
-                    "is valid.</span>"
-                )
-            else:
-                self.status_label.setText(
-                    "<span style='color:#c0392b'>✗ Mapillary rejected the "
-                    "token. Check it's correct and has <i>read</i> scope."
-                    "</span>"
-                )
-        except Exception as e:
+        self.button_box.setEnabled(False)
+
+        self._test_worker = TokenTestWorker(token)
+        self._test_worker.progress.connect(self._on_test_progress)
+        self._test_worker.result.connect(self._on_test_result)
+        self._test_worker.error.connect(self._on_test_error)
+        self._test_worker.finished.connect(self._on_test_thread_finished)
+        self._test_worker.start()
+
+    def _on_test_progress(self, message):
+        self.status_label.setText(message)
+
+    def _on_test_result(self, ok):
+        if ok:
             self.status_label.setText(
-                f"<span style='color:#c0392b'>✗ Network error: {e}</span>"
+                "<span style='color:#27ae60'>Connection OK - token "
+                "is valid.</span>"
             )
-        finally:
-            self.test_btn.setEnabled(True)
+        else:
+            self.status_label.setText(
+                "<span style='color:#c0392b'>Mapillary rejected the "
+                "token, or the connection timed out. Check the token has "
+                "<i>read</i> scope and try again.</span>"
+            )
+
+    def _on_test_error(self, message):
+        self.status_label.setText(
+            "<span style='color:#c0392b'>Network error: {}</span>".format(
+                message
+            )
+        )
+
+    def _on_test_thread_finished(self):
+        worker = self.sender()
+        if self._test_worker is worker:
+            self._test_worker = None
+        self.test_btn.setEnabled(True)
+        self.button_box.setEnabled(True)
+        if worker is not None:
+            worker.deleteLater()
+
+    def reject(self):
+        if self._test_worker is not None:
+            self.status_label.setText(
+                "Connection test is still running; wait for it to finish."
+            )
+            return
+        super().reject()
+
+    def closeEvent(self, event):
+        if self._test_worker is not None:
+            self.status_label.setText(
+                "Connection test is still running; wait for it to finish."
+            )
+            event.ignore()
+            return
+        super().closeEvent(event)
 
     def _save(self):
         token = self._current_token()

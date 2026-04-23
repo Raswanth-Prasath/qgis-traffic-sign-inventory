@@ -21,6 +21,9 @@ from . import tile_math
 from . import mvt_decoder
 
 
+MAPILLARY_TEST_TIMEOUT_MS = 5000
+
+
 class MapillaryClient:
     """Client for Mapillary API v4."""
 
@@ -52,7 +55,7 @@ class MapillaryClient:
 
     # ---- HTTP ---------------------------------------------------------
 
-    def _http_get(self, url, include_auth_header=True):
+    def _http_get(self, url, include_auth_header=True, timeout_ms=None):
         """GET `url` via QgsNetworkAccessManager.
 
         Returns `(status_code, content_bytes)` where `status_code` is
@@ -66,6 +69,7 @@ class MapillaryClient:
             QNetworkRequest.RedirectPolicyAttribute,
             QNetworkRequest.NoLessSafeRedirectPolicy,
         )
+        self._set_transfer_timeout(req, timeout_ms)
 
         blocking = QgsBlockingNetworkRequest()
         err = blocking.get(req)
@@ -76,6 +80,27 @@ class MapillaryClient:
         raw = reply.content()
         content = bytes(raw) if raw is not None else b""
         return status, content
+
+    def _set_transfer_timeout(self, req, timeout_ms):
+        """Apply a network transfer timeout when the Qt version supports it."""
+        if not timeout_ms:
+            return
+
+        try:
+            req.setTransferTimeout(int(timeout_ms))
+            return
+        except AttributeError:
+            pass
+        except TypeError:
+            pass
+
+        try:
+            req.setAttribute(
+                QNetworkRequest.TransferTimeoutAttribute,
+                int(timeout_ms),
+            )
+        except AttributeError:
+            pass
 
     def _build_entity_url(self, entity_id, fields):
         url = QUrl(self.ENTITY_URL.format(id=entity_id))
@@ -335,7 +360,8 @@ class MapillaryClient:
 
     # ---- Connectivity / token check ----------------------------------
 
-    def test_connection(self):
+    def test_connection(self, timeout_ms=MAPILLARY_TEST_TIMEOUT_MS,
+                        progress_callback=None):
         """Verify both Graph API and vector-tile access for the token."""
         url = QUrl(self.TEST_URL)
         q = QUrlQuery()
@@ -343,16 +369,27 @@ class MapillaryClient:
         q.addQueryItem("bbox", "-111.93,33.42,-111.92,33.43")
         q.addQueryItem("limit", "1")
         url.setQuery(q)
-        status, _ = self._http_get(url)
+        if progress_callback:
+            progress_callback("Checking Mapillary Graph API...")
+        status, _ = self._http_get(url, timeout_ms=timeout_ms)
         if status != 200:
             return False
 
-        tile = next(tile_math.tiles(-111.93, 33.42, -111.92, 33.43, zooms=14), None)
+        tile = next(
+            tile_math.tiles(-111.93, 33.42, -111.92, 33.43, zooms=14),
+            None,
+        )
         if tile is None:
             return False
 
+        if progress_callback:
+            progress_callback("Checking Mapillary vector tiles...")
         tile_url = self._build_tile_url(
             "mly_map_feature_traffic_sign", 14, tile.x, tile.y
         )
-        tile_status, _ = self._http_get(tile_url, include_auth_header=False)
+        tile_status, _ = self._http_get(
+            tile_url,
+            include_auth_header=False,
+            timeout_ms=timeout_ms,
+        )
         return tile_status not in (None, 401, 403)
