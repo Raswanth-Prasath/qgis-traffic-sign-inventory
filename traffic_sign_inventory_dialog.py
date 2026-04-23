@@ -179,7 +179,9 @@ class MapExtentPicker(QObject):
             pass
 
     def clear_rubber_band(self):
-        raise NotImplementedError
+        if self._persistent_band is not None:
+            self._canvas.scene().removeItem(self._persistent_band)
+            self._persistent_band = None
 
     def _on_extent_changed(self, rect):
         if rect.width() == 0 or rect.height() == 0:

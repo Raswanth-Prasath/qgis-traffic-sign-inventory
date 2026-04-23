@@ -107,5 +107,26 @@ class ExtentPickedSignalTest(unittest.TestCase):
         self.assertEqual(len(self.received), 0)
 
 
+class ClearRubberBandTest(unittest.TestCase):
+
+    def setUp(self):
+        CANVAS.setDestinationCrs(QgsCoordinateReferenceSystem("EPSG:4326"))
+        self.picker = MapExtentPicker(IFACE)
+
+    def tearDown(self):
+        try:
+            self.picker.deactivate()
+        except Exception:
+            pass
+        self.picker = None
+
+    def test_clear_rubber_band_removes_from_canvas(self):
+        rect = QgsRectangle(-111.93, 33.40, -111.92, 33.41)
+        self.picker._on_extent_changed(rect)
+        self.assertIsNotNone(self.picker._persistent_band)
+        self.picker.clear_rubber_band()
+        self.assertIsNone(self.picker._persistent_band)
+
+
 if __name__ == "__main__":
     unittest.main()
