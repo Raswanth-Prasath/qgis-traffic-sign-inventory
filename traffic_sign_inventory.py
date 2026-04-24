@@ -24,7 +24,7 @@ class TrafficSignInventory:
         self.menu = self.tr(u'&Traffic Sign Inventory')
 
         # Locale / translation support
-        locale = QSettings().value('locale/userLocale')[0:2]
+        locale = QSettings().value('locale/userLocale', 'en', type=str)[0:2]
         locale_path = os.path.join(
             self.plugin_dir, 'i18n',
             'TrafficSignInventory_{}.qm'.format(locale)
